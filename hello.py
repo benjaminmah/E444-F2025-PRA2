@@ -6,8 +6,16 @@ from datetime import datetime
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 
+def uoft_domain(email: str) -> bool:
+    if not email:
+        return False
+    e = email.lower().strip()
+    return e.endswith('@utoronto.ca') or e.endswith('@mail.utoronto.ca')
+
+
 class NameForm(FlaskForm):
-    name = StringField('What is your name?', validators=[DataRequired()])
+    name = StringField('What is your name?', validators=[DataRequired()], render_kw={"required": True})
+    email = StringField('What is your UofT Email address?', validators=[DataRequired()], render_kw={"type": "email", "required": True})
     submit = SubmitField('Submit')
 
 app = Flask(__name__)
@@ -22,9 +30,31 @@ def index():
         old_name = session.get('name')
         if old_name is not None and old_name != form.name.data:
             flash('Looks like you have changed your name!')
+        old_email = session.get('email')
+        if old_email is not None and old_email != form.email.data:
+            flash('Looks like you have changed your email!')
         session['name'] = form.name.data
+        session['email'] = form.email.data
         return redirect(url_for('index'))
-    return render_template('index.html', form=form, name=session.get('name'), current_time=datetime.utcnow())
+
+    name = session.get('name')
+    email = session.get('email')
+    if email:
+        if uoft_domain(email):
+            email_message = f"Your UofT email is {email}"
+        else:
+            email_message = "Please use your UofT email."
+    else:
+        email_message = None
+
+    return render_template(
+        'index.html',
+        form=form,
+        name=name,
+        email=email,
+        email_message=email_message,
+        current_time=datetime.utcnow(),
+    )
 
 @app.route('/user/<name>')
 def user(name):
